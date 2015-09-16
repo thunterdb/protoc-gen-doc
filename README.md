@@ -53,6 +53,18 @@ before or after the field/value definition. If a documentation
 comment begins with `@exclude`, the message, enum, enum value or
 field will be excluded from the generated documentation.
 
+## Using with the universe
+
+The magic incantation for one of the projects:
+
+```bash
+~/bin/protob/bin/protoc --doc_out=html,index.html:/home/tjhunter/tmp/doc -I ./api/src/main/protobuf/ -I ./api/target/protobuf_external/ ./api/src/main/protobuf/cluster/*.proto
+```
+
+NOTE: you need a recent version of protobuf (> 2.6). The version on `inception` is not recent enough and you will need to compile your own version.
+
+
+
 ## Output Example
 
 With the input `.proto` files
