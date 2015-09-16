@@ -19,11 +19,14 @@
 #include <string>
 
 #include <QDir>
+#include <QDebug>
 #include <QFile>
 #include <QFileInfo>
 #include <QFileInfoList>
 #include <QIODevice>
 #include <QJsonDocument>
+#include <QJsonValue>
+#include <QJsonObject>
 #include <QJsonArray>
 #include <QRegularExpression>
 #include <QString>
@@ -458,6 +461,27 @@ static QString nobrFilter(const QString &text, ms::Renderer* renderer, ms::Conte
     return result;
 }
 
+static QJsonValue convert(const QVariant &variant) {
+  if (variant.canConvert<QVariantList>()) {
+    QJsonArray array;
+    QSequentialIterable iterable = variant.value<QSequentialIterable>();
+    foreach (const QVariant &v, iterable) {
+      array.push_back(convert(v));
+    }
+    return QJsonValue(array);
+  }
+  if(variant.canConvert<QVariantHash>()) {
+    QJsonObject object;
+    QAssociativeIterable iterable = variant.value<QAssociativeIterable>();
+    QAssociativeIterable::const_iterator it = iterable.begin();
+    const QAssociativeIterable::const_iterator end = iterable.end();
+    for ( ; it != end; ++it) {
+      object.insert(it.key().value<QString>(), convert(it.value()));
+    }
+    return object;
+  }
+  return QJsonValue::fromVariant(variant);
+}
 /**
  * Renders the list of files.
  *
@@ -482,6 +506,25 @@ static bool render(const DocGeneratorContext &generatorContext,
 
     // Add files list.
     args["files"] = generatorContext.files;
+
+    QVariantMap argsMap;
+    QHashIterator<QString, QVariant> it(args);
+    while (it.hasNext()) {
+      it.next();
+      argsMap.insert(it.key(), it.value());
+    }
+    
+    QJsonObject obj = convert(args).toObject();
+    QJsonDocument doc(obj);
+    qDebug() << doc.toJson() << args["files"];
+    qDebug() << obj;
+    QString fname2("test.json");
+    QFile file2(fname2);
+    if (!file2.open(QIODevice::WriteOnly)) {
+        *error = QString(">>> %1: %2").arg(fname2).arg(file2.errorString()).toStdString();
+        return false;
+    }
+    file2.write(doc.toJson());
 
     // Add scalar value types table.
     QString fileName(":/templates/scalar_value_types.json");
